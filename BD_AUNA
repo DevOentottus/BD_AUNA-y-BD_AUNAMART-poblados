@@ -1,0 +1,428 @@
+-- Creación y uso de base de datos
+CREATE DATABASE BD_AUNA;
+GO
+
+USE BD_AUNA;
+GO
+
+----------------------------------
+-- Tablas del sistema
+
+-- Tabla que registra los cambios
+CREATE TABLE Registros_Cambios (
+    ID_Cambio INT IDENTITY(1,1) PRIMARY KEY,
+    Tabla_Afectada VARCHAR(100) NOT NULL,
+    ID_Registro_Afectado INT NOT NULL,
+    Tipo_Cambio VARCHAR(50) NOT NULL,
+    Fecha_Cambio DATETIME DEFAULT GETDATE(),
+    Usuario_Responsable VARCHAR(100) DEFAULT SYSTEM_USER,
+    Detalles TEXT
+);
+
+----------------------------------
+-- Tablas de configuración
+
+-- Tabla de rol
+CREATE TABLE Rol (
+    Rol_Id INT PRIMARY KEY,
+    Nombre_Rol VARCHAR(100) NOT NULL
+);
+
+-- Tabla de estado civil
+CREATE TABLE EstadoCivil (
+    Estado_Civil_Id INT PRIMARY KEY,
+    Nombre_EstadoCivil VARCHAR(100) NOT NULL
+);
+
+-- Tabla de motivo de salida del personal
+CREATE TABLE MotivoSalida (
+    Motivo_Salida_Id INT PRIMARY KEY,
+    Motivo VARCHAR(255) NOT NULL,
+    Categoria_Motivo VARCHAR(255) NOT NULL,
+    Subcategoria_Motivo VARCHAR(255) NULL,
+    Es_Voluntario BIT NOT NULL,
+    Es_Evitable BIT NOT NULL,
+    Comentarios_Adicionales TEXT NULL
+);
+
+----------------------------------
+-- Tablas de personal
+
+-- Tabla de personal de salud
+CREATE TABLE Empleado (
+    ID_Empleado INT PRIMARY KEY,
+    Nombre VARCHAR(255) NOT NULL,
+    Apellido_Paterno VARCHAR(255) NOT NULL,
+    Apellido_Materno VARCHAR(255) NULL,
+    Fecha_Nacimiento DATE NOT NULL,
+    Genero VARCHAR(50) NOT NULL,
+    Estado_Civil_Id INT NOT NULL,
+    Rol_Id INT NOT NULL,
+    Departamento VARCHAR(100) NOT NULL,
+    Fecha_Contratacion DATE NOT NULL,
+    Fecha_Salida DATE NULL,
+    Nivel_Educacion VARCHAR(100) NULL,
+    Anios_Experiencia INT NULL,
+    Salario DECIMAL(10, 2) NOT NULL,
+    Activo BIT DEFAULT 1,
+    FOREIGN KEY (Estado_Civil_Id) REFERENCES EstadoCivil(Estado_Civil_Id),
+    FOREIGN KEY (Rol_Id) REFERENCES Rol(Rol_Id)
+);
+
+-- Tabla de salidas de empleados
+CREATE TABLE Salidas_Empleados (
+    ID_Salida INT PRIMARY KEY,
+    ID_Empleado INT NOT NULL,
+    Fecha_Salida DATE NOT NULL,
+    ID_Motivo INT NOT NULL,
+    Comentarios TEXT NULL,
+    FOREIGN KEY (ID_Empleado) REFERENCES Empleado(ID_Empleado),
+    FOREIGN KEY (ID_Motivo) REFERENCES MotivoSalida(Motivo_Salida_Id)
+);
+
+-- Tabla de turnos de trabajo
+CREATE TABLE Turnos_Trabajo (
+    ID_Turno INT PRIMARY KEY,
+    Nombre_Turno VARCHAR(50) NOT NULL,
+    Dia_Semana VARCHAR(20) NOT NULL,
+    Hora_Inicio TIME NOT NULL,
+    Hora_Fin TIME NOT NULL
+);
+
+-- Tabla de asignación de turnos
+CREATE TABLE Empleado_Turno (
+    ID_Asignacion INT IDENTITY(1,1) PRIMARY KEY,
+    ID_Empleado INT NOT NULL,
+    ID_Turno INT NOT NULL,
+    Fecha_Inicio DATE NOT NULL,
+    Fecha_Fin DATE NULL,
+    FOREIGN KEY (ID_Empleado) REFERENCES Empleado(ID_Empleado),
+    FOREIGN KEY (ID_Turno) REFERENCES Turnos_Trabajo(ID_Turno)
+);
+
+-- Tabla de asistencias
+CREATE TABLE Asistencias_Empleado (
+    ID_Asistencia INT PRIMARY KEY,
+    ID_Empleado INT NOT NULL,
+    ID_Turno INT NOT NULL,
+    Fecha DATE NOT NULL,
+    Asistio BIT NOT NULL,
+    Hora_Entrada TIME NULL,
+    Hora_Salida TIME NULL,
+    Observaciones TEXT NULL,
+    FOREIGN KEY (ID_Empleado) REFERENCES Empleado(ID_Empleado),
+    FOREIGN KEY (ID_Turno) REFERENCES Turnos_Trabajo(ID_Turno)
+);
+
+----------------------------------
+-- Tablas de pacientes
+
+-- Tabla de pacientes
+CREATE TABLE Pacientes (
+    ID_Paciente INT PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Apellido VARCHAR(100) NOT NULL,
+    DNI VARCHAR(8) UNIQUE NOT NULL,
+    Fecha_Nacimiento DATE NOT NULL,
+    Sexo CHAR(1) NOT NULL,
+    Telefono VARCHAR(20) NULL,
+    Correo VARCHAR(100) NULL,
+    Direccion TEXT NULL,
+    Fecha_Registro DATE DEFAULT GETDATE(),
+    Activo BIT DEFAULT 1
+);
+
+----------------------------------
+-- Tablas de servicios médicos
+
+-- Tabla de tipos de servicio
+CREATE TABLE Tipo_Servicio (
+    ID_Tipo_Servicio INT PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Descripcion VARCHAR(255) NULL,
+    Costo_Base DECIMAL(10, 2) NOT NULL
+);
+
+-- Tabla de servicios prestados
+CREATE TABLE ServiciosPrestados (
+    ID_ServicioPrestado INT IDENTITY(1,1) PRIMARY KEY,
+    ID_Tipo_Servicio INT NOT NULL,
+    ID_Paciente INT NOT NULL,
+    ID_Empleado INT NULL,
+    Fecha_Inicio DATETIME NOT NULL,
+    Fecha_Fin DATETIME NULL,
+    Estado VARCHAR(50) NOT NULL,
+    Costo_Real DECIMAL(10, 2) NOT NULL,
+    Observaciones TEXT NULL,
+    FOREIGN KEY (ID_Tipo_Servicio) REFERENCES Tipo_Servicio(ID_Tipo_Servicio),
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente),
+    FOREIGN KEY (ID_Empleado) REFERENCES Empleado(ID_Empleado)
+);
+
+-- Tabla de citas médicas
+CREATE TABLE Citas_Medicas (
+    ID_Cita INT PRIMARY KEY,
+    ID_Paciente INT NOT NULL,
+    ID_Empleado INT NOT NULL,
+    ID_ServicioPrestado INT NULL,
+    Fecha DATE NOT NULL,
+    Hora TIME NOT NULL,
+    Estado VARCHAR(50) NOT NULL,
+    Tipo_Consulta VARCHAR(100) NOT NULL,
+    Observaciones TEXT NULL,
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente),
+    FOREIGN KEY (ID_Empleado) REFERENCES Empleado(ID_Empleado),
+    FOREIGN KEY (ID_ServicioPrestado) REFERENCES ServiciosPrestados(ID_ServicioPrestado)
+);
+
+-- Tabla de consultas médicas
+CREATE TABLE Consultas_Medicas (
+    ID_Consulta INT PRIMARY KEY,
+    ID_Cita INT NOT NULL,
+    Diagnostico TEXT NOT NULL,
+    Tratamiento TEXT NULL,
+    Observaciones TEXT NULL,
+    FOREIGN KEY (ID_Cita) REFERENCES Citas_Medicas(ID_Cita)
+);
+
+-- Tabla de hospitalizaciones
+CREATE TABLE Hospitalizaciones (
+    ID_Hospitalizacion INT PRIMARY KEY,
+    ID_ServicioPrestado INT NOT NULL,
+    Fecha_Ingreso DATETIME NOT NULL,
+    Fecha_Alta DATETIME NULL,
+    Diagnostico TEXT NOT NULL,
+    Observaciones TEXT NULL,
+    FOREIGN KEY (ID_ServicioPrestado) REFERENCES ServiciosPrestados(ID_ServicioPrestado)
+);
+
+-- Tabla de atenciones de emergencia
+CREATE TABLE Atenciones_Emergencia (
+    ID_Emergencia INT PRIMARY KEY,
+    ID_ServicioPrestado INT NOT NULL,
+    Fecha DATETIME NOT NULL,
+    Motivo TEXT NOT NULL,
+    Tratamiento TEXT NULL,
+    Gravedad VARCHAR(50) NOT NULL,
+    FOREIGN KEY (ID_ServicioPrestado) REFERENCES ServiciosPrestados(ID_ServicioPrestado)
+);
+
+-- Tabla de UCI
+CREATE TABLE UCI (
+    ID_UCI INT PRIMARY KEY,
+    ID_ServicioPrestado INT NOT NULL,
+    Fecha_Ingreso DATETIME NOT NULL,
+    Fecha_Salida DATETIME NULL,
+    Diagnostico TEXT NOT NULL,
+    Observaciones TEXT NULL,
+    FOREIGN KEY (ID_ServicioPrestado) REFERENCES ServiciosPrestados(ID_ServicioPrestado)
+);
+
+----------------------------------
+-- Tablas de infraestructura
+
+-- Tabla de habitaciones
+CREATE TABLE Habitaciones (
+    ID_Habitacion INT PRIMARY KEY,
+    Tipo VARCHAR(100) NOT NULL,
+    Estado VARCHAR(50) NOT NULL,
+    Capacidad INT NOT NULL,
+    Ubicacion VARCHAR(100) NOT NULL
+);
+
+-- Tabla de camas
+CREATE TABLE Camas (
+    ID_Cama INT PRIMARY KEY,
+    ID_Habitacion INT NOT NULL,
+    Estado VARCHAR(50) NOT NULL,
+    FOREIGN KEY (ID_Habitacion) REFERENCES Habitaciones(ID_Habitacion)
+);
+
+-- Tabla de asignación de camas
+CREATE TABLE Asignacion_Camas (
+    ID_Asignacion INT IDENTITY(1,1) PRIMARY KEY,
+    ID_Cama INT NOT NULL,
+    ID_Paciente INT NOT NULL,
+    ID_ServicioPrestado INT NOT NULL,
+    Fecha_Asignacion DATETIME NOT NULL,
+    Fecha_Liberacion DATETIME NULL,
+    FOREIGN KEY (ID_Cama) REFERENCES Camas(ID_Cama),
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente),
+    FOREIGN KEY (ID_ServicioPrestado) REFERENCES ServiciosPrestados(ID_ServicioPrestado)
+);
+
+-- Tabla de equipos médicos
+CREATE TABLE Equipos_Medicos (
+    ID_EquipoMedico INT PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Tipo VARCHAR(100) NOT NULL,
+    Fecha_Compra DATE NOT NULL,
+    Estado VARCHAR(50) NOT NULL,
+    Ubicacion VARCHAR(100) NOT NULL,
+    Vida_Util INT NULL,
+    Costo_Adquisicion DECIMAL(10, 2) NOT NULL
+);
+
+-- Tabla de asignación de equipos
+CREATE TABLE Asignacion_Equipos (
+    ID_Asignacion INT IDENTITY(1,1) PRIMARY KEY,
+   ID_EquipoMedico INT NOT NULL,
+    ID_Paciente INT NULL,
+    ID_ServicioPrestado INT NULL,
+    Fecha_Asignacion DATETIME NOT NULL,
+    Fecha_Devolucion DATETIME NULL,
+    FOREIGN KEY (ID_EquipoMedico) REFERENCES Equipos_Medicos(ID_EquipoMedico),
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente),
+    FOREIGN KEY (ID_ServicioPrestado) REFERENCES ServiciosPrestados(ID_ServicioPrestado)
+);
+
+----------------------------------
+-- Tablas de productos
+
+-- Tabla de categorías de productos
+CREATE TABLE Categorias_Producto (
+    ID_Categoria INT PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Descripcion VARCHAR(255) NULL
+);
+
+-- Tabla de productos farmacéuticos
+CREATE TABLE ProductosFarmaceuticos (
+    ID_ProductoFarmaceutico INT IDENTITY(1,1) PRIMARY KEY,
+    ID_Categoria INT NOT NULL,
+    Nombre_Producto VARCHAR(100) NOT NULL,
+    Descripcion VARCHAR(255) NULL,
+    Precio_Venta DECIMAL(10, 2) NOT NULL,
+    Costo_Compra DECIMAL(10, 2) NOT NULL,
+    Stock INT NOT NULL,
+    Stock_Minimo INT NOT NULL,
+    Activo BIT DEFAULT 1,
+    FOREIGN KEY (ID_Categoria) REFERENCES Categorias_Producto(ID_Categoria)
+);
+
+----------------------------------
+-- Tablas financieras
+
+-- Tabla de ventas
+CREATE TABLE Ventas (
+    ID_Venta INT PRIMARY KEY,
+    ID_Empleado INT NOT NULL,
+    Fecha DATETIME NOT NULL,
+    Estado VARCHAR(50) NOT NULL,
+    Subtotal DECIMAL(12,2) NOT NULL,
+    Descuento DECIMAL(10,2) DEFAULT 0,
+    Total DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (ID_Empleado) REFERENCES Empleado(ID_Empleado)
+);
+
+-- Tabla de detalles de venta
+CREATE TABLE Detalles_Venta (
+    ID_Detalle_Venta INT PRIMARY KEY,
+    ID_Venta INT NOT NULL,
+    ID_ProductoFarmaceutico INT NOT NULL,
+    Cantidad INT NOT NULL,
+    Precio_Unitario DECIMAL(10,2) NOT NULL,
+    Descuento DECIMAL(10,2) DEFAULT 0,
+    Subtotal DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (ID_Venta) REFERENCES Ventas(ID_Venta),
+    FOREIGN KEY (ID_ProductoFarmaceutico) REFERENCES ProductosFarmaceuticos(ID_ProductoFarmaceutico)
+);
+
+-- Tabla de facturación
+CREATE TABLE Facturacion (
+    ID_Factura INT PRIMARY KEY,
+    ID_Paciente INT NULL,
+    ID_Venta INT NULL,
+    ID_ServicioPrestado INT NULL,
+    Fecha DATETIME NOT NULL,
+    Descripcion TEXT NULL,
+    Subtotal DECIMAL(10,2) NOT NULL,
+    Impuestos DECIMAL(10,2) NOT NULL,
+    Total DECIMAL(10,2) NOT NULL,
+    Estado VARCHAR(50) NOT NULL,
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente),
+    FOREIGN KEY (ID_Venta) REFERENCES Ventas(ID_Venta),
+    FOREIGN KEY (ID_ServicioPrestado) REFERENCES ServiciosPrestados(ID_ServicioPrestado)
+);
+
+-- Tabla de pagos
+CREATE TABLE Pagos (
+    ID_Pago INT PRIMARY KEY,
+    ID_Factura INT NOT NULL,
+    Fecha DATETIME NOT NULL,
+    Monto DECIMAL(10,2) NOT NULL,
+    Metodo_Pago VARCHAR(50) NOT NULL,
+    Estado VARCHAR(50) NOT NULL,
+    Referencia VARCHAR(100) NULL,
+    FOREIGN KEY (ID_Factura) REFERENCES Facturacion(ID_Factura)
+);
+
+-- Tabla de tipos de gasto
+CREATE TABLE Tipo_Gasto (
+    ID_Tipo_Gasto INT PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Descripcion VARCHAR(255) NULL,
+    Categoria VARCHAR(50) NOT NULL
+);
+
+-- Tabla de gastos
+CREATE TABLE Gastos (
+    ID_Gasto INT PRIMARY KEY,
+    ID_Tipo_Gasto INT NOT NULL,
+    ID_Empleado_Responsable INT NULL,
+    ID_EquipoMedico INT NULL,
+    Fecha DATETIME NOT NULL,
+    Descripcion TEXT NULL,
+    Monto DECIMAL(10,2) NOT NULL,
+    ID_ProductoFarmaceutico INT NULL,
+    FOREIGN KEY (ID_Tipo_Gasto) REFERENCES Tipo_Gasto(ID_Tipo_Gasto),
+    FOREIGN KEY (ID_Empleado_Responsable) REFERENCES Empleado(ID_Empleado),
+    FOREIGN KEY (ID_EquipoMedico) REFERENCES Equipos_Medicos(ID_EquipoMedico),
+    FOREIGN KEY (ID_ProductoFarmaceutico) REFERENCES ProductosFarmaceuticos(ID_ProductoFarmaceutico)
+);
+
+----------------------------------
+-- Tablas de satisfacción del paciente
+
+-- Tabla de encuestas de satisfacción
+CREATE TABLE Encuestas_Satisfaccion (
+    ID_Encuesta INT PRIMARY KEY,
+    ID_Paciente INT NOT NULL,
+    Fecha_Encuesta DATE NOT NULL,
+    Puntaje_Calidad_Atencion INT NOT NULL,
+    Puntaje_Tiempo_Espera INT NOT NULL,
+    Puntaje_Empleado INT NOT NULL,
+    Puntaje_Infraestructura INT NOT NULL,
+    Puntaje_Comunicacion INT NOT NULL,
+    Puntaje_NPS INT NOT NULL,
+    Comentario TEXT NULL,
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente)
+);
+
+-- Tabla de reclamos
+CREATE TABLE Reclamos (
+    ID_Reclamo INT PRIMARY KEY,
+    ID_Paciente INT NOT NULL,
+    Fecha_Reclamo DATETIME NOT NULL,
+    Tipo_Reclamo VARCHAR(100) NOT NULL,
+    Descripcion TEXT NOT NULL,
+    ID_Empleado_Asignado INT NULL,
+    Respuesta TEXT NULL,
+    Fecha_Respuesta DATETIME NULL,
+    Estado VARCHAR(50) NOT NULL,
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente),
+    FOREIGN KEY (ID_Empleado_Asignado) REFERENCES Empleado(ID_Empleado)
+);
+
+-- Tabla de calificaciones online
+CREATE TABLE Calificaciones_Online (
+    ID_Calificacion INT PRIMARY KEY,
+    ID_Paciente INT NOT NULL,
+    Fecha_Calificacion DATETIME NOT NULL,
+    Plataforma VARCHAR(100) NOT NULL,
+    Puntaje INT NOT NULL,
+    Comentario TEXT NULL,
+    Respuesta TEXT NULL,
+    Fecha_Respuesta DATETIME NULL,
+    FOREIGN KEY (ID_Paciente) REFERENCES Pacientes(ID_Paciente)
+);
